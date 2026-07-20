@@ -4,9 +4,10 @@ import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-# --- CẤU HÌNH CỦA BẠN ---
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8296816565:AAHQxTFOuqvjd56tVl7PQlkW6UhlxX0kXhw")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "6365450722")
+# --- ĐỌC TỪ BIẾN MÔI TRƯỜNG (Không hardcode nữa) ---
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+COOKIE_STRING = os.getenv("COOKIE_STRING")
 
 ACCOUNTS_INFO = {
     "ID1": "EJ7Z-CDRL-LMYC",
@@ -16,9 +17,6 @@ ACCOUNTS_INFO = {
 }
 
 VNG_API_URL = "https://vgrapi-sea.vnggames.com/coordinator/api/v1/code/redeem"
-
-# 👇 Đọc Cookie từ Railway Variables (Không dán cứng nữa)
-COOKIE_STRING = os.getenv("COOKIE_STRING")
 
 VNG_HEADERS = {
     "Cookie": COOKIE_STRING,
@@ -73,7 +71,11 @@ async def handle_nhapcode(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"💥 Bot gặp lỗi: {str(e)}")
 
 if __name__ == "__main__":
-    print("✅ Bot VNG đang chạy trên Railway (24/7)... Gõ /nhapcode để dùng.")
-    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-    app.add_handler(CommandHandler("nhapcode", handle_nhapcode))
-    app.run_polling()
+    # Kiểm tra xem có biến môi trường chưa để tránh bot chạy khi chưa cấu hình
+    if not TELEGRAM_BOT_TOKEN or not COOKIE_STRING:
+        print("🚨 Lỗi: Thiếu TELEGRAM_BOT_TOKEN hoặc COOKIE_STRING trong Railway Variables!")
+    else:
+        print("✅ Bot VNG chạy 24/7 trên Railway. Gõ /nhapcode để dùng.")
+        app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+        app.add_handler(CommandHandler("nhapcode", handle_nhapcode))
+        app.run_polling()
