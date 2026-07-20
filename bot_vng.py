@@ -23,7 +23,7 @@ VNG_HEADERS = {
     "accept": "application/json, text/plain, */*",
     "content-type": "application/json",
     "user-agent": "Mozilla/5.0",
-    "Region": "VN"  # 👈 Thêm dòng này vào
+    "Region": "PH"  # 👈 Thêm dòng này vào
 }
 
 async def call_redeem_api(role_id, code):
