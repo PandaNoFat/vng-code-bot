@@ -22,7 +22,8 @@ VNG_HEADERS = {
     "Cookie": COOKIE_STRING,
     "accept": "application/json, text/plain, */*",
     "content-type": "application/json",
-    "user-agent": "Mozilla/5.0"
+    "user-agent": "Mozilla/5.0",
+    "Region": "VN"  # 👈 Thêm dòng này vào
 }
 
 async def call_redeem_api(role_id, code):
