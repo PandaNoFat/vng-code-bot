@@ -30,29 +30,26 @@ async def call_redeem_api(role_id, code):
     payload = {"serverId": "2", "gameCode": "C15", "roleId": role_id, "roleName": role_id, "code": code}
     try:
         response = requests.post(VNG_API_URL, json=payload, headers=VNG_HEADERS, timeout=10)
-        
-        # Ép server trả về text để xem nó nói gì nếu status không phải 200 hoặc không phải JSON
         text_content = response.text
         
+        # Bắt lỗi 403 (WAF chặn)
+        if response.status_code == 403:
+            return "error", f"⛔ VNG đã chặn IP (Status 403). Token WAF hết hạn hoặc IP thay đổi.\nNội dung: {text_content[:100]}..."
+
         if response.status_code == 200:
             try:
                 res_json = response.json()
                 return "success", res_json.get('message', 'Thành công!')
             except:
-                # Mặc dù code 200 nhưng server trả về HTML (rất có thể là Cloudflare Block)
-                return "error", f"🚫 Server trả về 200 OK nhưng nội dung không phải JSON. VNG đã chặn IP:\n{text_content[:200]}..."
-        
-        elif response.status_code in [401, 403]:
-            return "expired", f"⚠️ Cookie sai hoặc hết hạn (Status {response.status_code})."
-        
+                return "error", f"Server trả về 200 nhưng nội dung không phải JSON: {text_content[:100]}..."
+                
+        elif response.status_code in [401, 400]:
+            # Lỗi do Cookie hết hạn hoặc sai (khi chạy cùng IP mới có giá trị)
+            return "expired", f"⚠️ Cookie không hợp lệ (Status {response.status_code})."
         else:
-            # Lỗi 502, 504, 500... - Chắc chắn bị Cloudflare hoặc firewall chặn IP
-            return "error", f"🚫 Server VNG chặn hoặc lỗi ({response.status_code}). Nội dung trả về:\n{text_content[:300]}..."
-            
-    except requests.exceptions.RequestException as e:
-        return "error", f"Lỗi kết nối mạng: {str(e)}"
+            return "error", f"Server lỗi ({response.status_code}): {text_content[:100]}..."
     except Exception as e:
-        return "error", f"Lỗi không xác định: {str(e)}"
+        return "error", f"Lỗi kết nối: {str(e)}"
 
 async def handle_nhapcode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
