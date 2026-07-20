@@ -1,0 +1,79 @@
+import requests
+import os
+import asyncio
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes
+
+# --- CẤU HÌNH CỦA BẠN ---
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8296816565:AAHQxTFOuqvjd56tVl7PQlkW6UhlxX0kXhw")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "6365450722")
+
+ACCOUNTS_INFO = {
+    "ID1": "EJ7Z-CDRL-LMYC",
+    "ID2": "3LCD-HS9L-LMYC",
+    "ID3": "WM7A-V4RL-LMGG",
+    "ID4": "VM7C-AVZL-LMYY"
+}
+
+VNG_API_URL = "https://vgrapi-sea.vnggames.com/coordinator/api/v1/code/redeem"
+
+# 👇 Đọc Cookie từ Railway Variables (Không dán cứng nữa)
+COOKIE_STRING = os.getenv("COOKIE_STRING")
+
+VNG_HEADERS = {
+    "Cookie": COOKIE_STRING,
+    "accept": "application/json, text/plain, */*",
+    "content-type": "application/json",
+    "user-agent": "Mozilla/5.0"
+}
+
+async def call_redeem_api(role_id, code):
+    payload = {"serverId": "2", "gameCode": "C15", "roleId": role_id, "roleName": role_id, "code": code}
+    try:
+        response = requests.post(VNG_API_URL, json=payload, headers=VNG_HEADERS, timeout=10)
+        res_json = response.json()
+        if response.status_code == 200:
+            return "success", res_json.get('message', 'Thành công!')
+        elif response.status_code in [401, 403]:
+            return "expired", "Cookie đã hết hạn! Vào Railway -> Variables -> Sửa COOKIE_STRING."
+        else:
+            return "error", res_json.get('message', f'Lỗi {response.status_code}')
+    except Exception as e:
+        return "error", f"Lỗi kết nối: {str(e)}"
+
+async def handle_nhapcode(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        args = update.message.text.split(" ", 1)
+        if len(args) < 2:
+            await update.message.reply_text("⚠️ Cú pháp: `/nhapcode MÃ1,MÃ2`")
+            return
+        codes = [c.strip() for c in args[1].strip().split(',') if c.strip()]
+        if not codes:
+            await update.message.reply_text("⚠️ Bạn chưa gửi mã code nào!")
+            return
+            
+        await update.message.reply_text(f"🔄 Đang xử lý {len(codes)} code cho {len(ACCOUNTS_INFO)} ID...")
+
+        report_list = []
+        for acc_name, role_id in ACCOUNTS_INFO.items():
+            report_list.append(f"\n👤 **{acc_name}** (`{role_id}`):")
+            for code in codes:
+                status, result = await call_redeem_api(role_id, code)
+                if status == "success":
+                    report_list.append(f"  - Code `{code}`: ✅ {result}")
+                elif status == "expired":
+                    report_list.append(f"  - Code `{code}`: ⚠️ {result}")
+                else:
+                    report_list.append(f"  - Code `{code}`: ❌ {result}")
+                await asyncio.sleep(2)
+            await asyncio.sleep(5)
+
+        await update.message.reply_text("📢 Kết quả nhập Giftcode VNG\n" + "\n".join(report_list), parse_mode='Markdown')
+    except Exception as e:
+        await update.message.reply_text(f"💥 Bot gặp lỗi: {str(e)}")
+
+if __name__ == "__main__":
+    print("✅ Bot VNG đang chạy trên Railway (24/7)... Gõ /nhapcode để dùng.")
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    app.add_handler(CommandHandler("nhapcode", handle_nhapcode))
+    app.run_polling()
